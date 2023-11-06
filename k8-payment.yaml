@@ -1,0 +1,82 @@
+# Creates payment Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment
+  labels:
+    app: payment
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable : 20
+  selector:
+    matchLabels:
+      app: payment
+  template:
+    metadata:
+      labels:
+        app: payment
+    spec:
+      containers:
+      - name: payment
+        image: 834725375088.dkr.ecr.us-east-1.amazonaws.com/payment:502
+        ports:
+        - containerPort: 8080 
+        envFrom: 
+          - configMapRef:
+                name: payment-configmap
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "300Mi"
+            cpu: "200m"
+
+--- 
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payment-configmap 
+data:
+  CART_HOST: cart-svc
+  USER_HOST: user-svc 
+  AMQP_HOST: rabbitmq-dev.roboshop.internal
+  AMQP_USER: roboshop 
+  AMQP_PASS: rabbitmq123
+
+--- 
+# This should be internal
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-svc
+spec:
+  selector:
+    app: payment
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+
+--- 
+# AutoScaling 
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: payment-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: payment
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageUtilization: 75
