@@ -6,3 +6,4 @@ variable "OD_INSTANCE_COUNT" {}
 variable "APP_PORT" {}
 variable "COMPONENT" {}
 variable "INTERNAL" {}
+variable "APP_VERSION" {}
